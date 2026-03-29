@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YT Link Extractor</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --border: #2e2e2e;
+      --red: #ff0000;
+      --red-dim: #cc0000;
+      --text: #f1f1f1;
+      --muted: #aaaaaa;
+      --success: #2ba640;
+      --font: 'Sora', sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      width: 400px;
+      min-height: 180px;
+      max-height: 560px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      background: var(--red);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .logo svg { width: 16px; height: 16px; fill: white; }
+
+    .header-text { flex: 1; }
+    .header-text h1 { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; }
+    .header-text p  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+    .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .badge.has-count { color: var(--red); border-color: var(--red); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    button {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 7px 14px;
+      transition: all 0.15s ease;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-extract {
+      background: var(--red);
+      color: white;
+      flex: 1;
+    }
+    .btn-extract:hover { background: var(--red-dim); }
+    .btn-extract:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+    .btn-copy {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-copy:hover { background: #2e2e2e; }
+    .btn-copy:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-clear:hover { color: var(--text); border-color: #555; }
+    .btn-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Search ── */
+    .search-wrap {
+      padding: 8px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      display: none;
+    }
+    .search-wrap.visible { display: block; }
+
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: var(--red); }
+    .search-wrap input::placeholder { color: var(--muted); }
+
+    /* ── Status / Empty State ── */
+    .status {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 28px 16px;
+      text-align: center;
+    }
+
+    .status-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+    }
+
+    .status-icon svg { width: 22px; height: 22px; }
+
+    .status h2 { font-size: 13px; font-weight: 600; }
+    .status p  { font-size: 11px; color: var(--muted); line-height: 1.5; max-width: 260px; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── List ── */
+    .list-wrap {
+      flex: 1;
+      overflow-y: auto;
+      display: none;
+    }
+    .list-wrap.visible { display: block; }
+
+    .list-wrap::-webkit-scrollbar { width: 5px; }
+    .list-wrap::-webkit-scrollbar-track { background: transparent; }
+    .list-wrap::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    .list-wrap::-webkit-scrollbar-thumb:hover { background: #444; }
+
+    .video-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .video-item:hover { background: var(--surface2); }
+    .video-item:last-child { border-bottom: none; }
+
+    .item-num {
+      font-size: 10px;
+      color: var(--muted);
+      width: 18px;
+      flex-shrink: 0;
+      text-align: right;
+      font-weight: 500;
+    }
+
+    /* ── Thumbnail ── */
+    .item-thumb {
+      position: relative;
+      flex-shrink: 0;
+      width: 88px;
+      height: 50px;
+      border-radius: 5px;
+      overflow: hidden;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .item-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.2s ease;
+    }
+
+    .item-thumb:hover img { transform: scale(1.05); }
+
+    /* Play overlay on hover */
+    .item-thumb::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0) url('') center/20px no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    .item-thumb:hover::after {
+      background-color: rgba(0,0,0,0.35);
+    }
+
+    .thumb-play {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .item-thumb:hover .thumb-play { opacity: 1; }
+    .thumb-play svg { width: 22px; height: 22px; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.8)); }
+
+    /* Shimmer placeholder while loading */
+    .thumb-shimmer {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--surface2) 25%, #2a2a2a 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .item-thumb img.loaded + .thumb-shimmer,
+    .item-thumb img.loaded ~ .thumb-shimmer { display: none; }
+
+    .item-info { flex: 1; min-width: 0; }
+    .item-title {
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+      line-height: 1.3;
+    }
+    .item-url {
+      font-size: 9.5px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    .icon-btn {
+      width: 26px; height: 26px;
+      border-radius: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .icon-btn:hover { background: #2e2e2e; color: var(--text); }
+    .icon-btn svg { width: 13px; height: 13px; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 8px 16px;
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    footer span { display: none; }
+    footer span.visible { display: block; }
+
+    .toast {
+      position: fixed;
+      bottom: 44px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--success);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: all 0.2s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .item-checkbox {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--red);
+      cursor: pointer;
+      flex-shrink: 0;
+}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.6 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.3.6 9.3.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>
+  </div>
+  <div class="header-text">
+    <h1>YT Link Extractor</h1>
+    <p>Extract video links from any YouTube channel</p>
+  </div>
+  <div class="badge" id="countBadge">0 videos</div>
+</header>
+
+<div class="toolbar">
+  <button class="btn-extract" id="btnExtract">▶ Extract Links</button>
+  <button class="btn-copy" id="btnCopy" disabled>⧉ Copy All</button>
+  <button class="btn-copy" id="btnCopySelected" disabled>⧉ Copy Selected</button>
+  <button class="btn-clear" id="btnClear" disabled>✕</button>
+</div>
+
+<div class="search-wrap" id="searchWrap">
+  <input type="text" id="searchInput" placeholder="🔍  Filter videos by title or URL…" />
+</div>
+
+<!-- States -->
+<div class="status" id="stateIdle">
+  <div class="status-icon">
+    <svg fill="none" stroke="#ff0000" stroke-width="1.5" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+    </svg>
+  </div>
+  <h2>No links extracted yet</h2>
+  <p>Go to a YouTube channel's <strong>Videos</strong> tab, then click <strong>Extract Links</strong>.</p>
+</div>
+
+<div class="status" id="stateLoading" style="display:none">
+  <div class="spinner"></div>
+  <h2>Extracting links…</h2>
+  <p>Reading video links from the current page.</p>
+</div>
+
+<div class="status" id="stateEmpty" style="display:none">
+  <div class="status-icon">
+    <svg fill="none" stroke="var(--muted)" stroke-width="1.5" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z"/>
+    </svg>
+  </div>
+  <h2>No videos found</h2>
+  <p>Make sure you are on a YouTube channel's <strong>Videos</strong> tab and scroll down to load more videos first.</p>
+</div>
+
+<div class="status" id="stateError" style="display:none">
+  <div class="status-icon">
+    <svg fill="none" stroke="#ff4444" stroke-width="1.5" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+    </svg>
+  </div>
+  <h2>Something went wrong</h2>
+  <p id="errorMsg">Please navigate to a YouTube page and try again.</p>
+</div>
+
+<!-- Results list -->
+<div class="list-wrap" id="listWrap"></div>
+
+<footer>
+  <span id="footerInfo" class="visible">YT Channel Link Extractor v1.0</span>
+  <span id="footerFiltered"></span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="popup.js"></script>
+</body>
+</html>
